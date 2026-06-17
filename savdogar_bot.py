@@ -92,10 +92,15 @@ async def get_nft_floor_tonnel(gift_name: str):
         return None
     try:
         logger.info(f"Tonnel search: {gift_name}")
-        result = getGifts(gift_name=gift_name, limit=1, sort="price_asc", authData=TONNEL_AUTH)
+        kwargs = {"gift_name": gift_name, "limit": 5, "sort": "price_asc"}
+        if TONNEL_AUTH:
+            kwargs["authData"] = TONNEL_AUTH
+        result = getGifts(**kwargs)
         logger.info(f"Tonnel result: {result}")
         if result and len(result) > 0:
-            return float(result[0].get("price", 0))
+            prices = [float(g.get("price", 0)) for g in result if g.get("price")]
+            if prices:
+                return min(prices)
     except Exception as e:
         logger.error(f"Tonnel error: {e}")
     return None
@@ -171,9 +176,29 @@ async def cmd_start(message: Message):
         "/stars <miqdor> - Stars -> Som\n"
         "/crypto <coin> - Crypto narxi\n"
         "/gold - Oltin narxi\n"
+        "/test - Tekshirish\n"
         f"\nAdmin: {ADMIN}"
     )
     await message.answer(text)
+
+
+@dp.message(Command("test"))
+async def cmd_test(message: Message):
+    status = []
+    status.append(f"Tonnel lib: {'OK' if TONNELMP_AVAILABLE else 'FAIL'}")
+    status.append(f"MRKT lib: {'OK' if MRKTMP_AVAILABLE else 'FAIL'}")
+    status.append(f"Portals lib: {'OK' if PORTALSMP_AVAILABLE else 'FAIL'}")
+    status.append(f"TONNEL_AUTH: {'Set' if TONNEL_AUTH else 'Empty'}")
+    status.append(f"BOT_TOKEN: Set")
+
+    if TONNELMP_AVAILABLE:
+        try:
+            result = getGifts(gift_name="toy bear", limit=1, sort="price_asc")
+            status.append(f"Tonnel API: OK - {result}")
+        except Exception as e:
+            status.append(f"Tonnel API: ERROR - {e}")
+
+    await message.answer("\n".join(status))
 
 
 @dp.message(Command("nft"))
