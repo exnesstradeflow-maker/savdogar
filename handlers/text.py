@@ -5,8 +5,7 @@ from aiogram.types import Message
 from config import ADMIN_USERNAME
 from services.coingecko import get_crypto_price, resolve_coin
 from services.cbu import get_cbu_rate
-from services.tonnel import TONNELMP_AVAILABLE, get_tonnel_floor
-from services.ocr import parse_tg_nft_link
+from services.marketplaces import get_all_floor_prices, format_marketplace_response
 
 router = Router()
 
@@ -25,21 +24,16 @@ async def handle_text(message: Message):
     text = message.text.strip()
 
     nft_match = NFT_LINK_PATTERN.search(text)
-    if nft_match and TONNELMP_AVAILABLE:
+    if nft_match:
         raw_name = nft_match.group(1)
         gift_name = re.sub(r'-\d+$', '', raw_name)
-        await message.answer(f"{gift_name} narxi qidirilmoqda...")
-        result = await get_tonnel_floor(gift_name)
+        await message.answer(f"{gift_name} narxi barcha marketlardan qidirilmoqda...")
+        prices = await get_all_floor_prices(gift_name)
         ton_usd = await get_crypto_price("the-open-network", "usd")
-        if result:
-            floor, count = result
-            lines = [f"[NFT] {gift_name.upper()}", "=" * 30]
-            lines.append(f"Floor: {floor:.2f} TON")
-            if ton_usd:
-                lines.append(f" (~${floor * ton_usd:.2f})")
-            lines.append(f"Sotuvda: {count} ta")
-            lines.append(f"\nAdmin: {ADMIN_USERNAME}")
-            await message.answer("\n".join(lines))
+        if prices:
+            response = format_marketplace_response(gift_name, prices, ton_usd)
+            response += f"\n\nAdmin: {ADMIN_USERNAME}"
+            await message.answer(response)
         else:
             await message.answer(f"{gift_name} uchun narx topilmadi")
         return

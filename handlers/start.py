@@ -1,4 +1,4 @@
-from aiogram import Router, types
+from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 
@@ -10,16 +10,17 @@ router = Router()
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
-    status = "ON" if TONNELMP_AVAILABLE else "OFF"
+    tonnel_status = "ON" if TONNELMP_AVAILABLE else "OFF"
     await message.answer(
         "Savdogar Bot\n\n"
         "Buyruqlar:\n"
-        "/nft <nomi> - NFT floor narxi (Tonnel)\n"
+        "/nft <nomi> - NFT floor narxi (Tonnel, Fragment, Getgems)\n"
         "/stars <miqdor> - Stars -> Som\n"
         "/crypto <coin> - Crypto narxi\n"
         "/gold - Oltin narxi\n"
-        "[Photo] - NFT rasmini yuboring, floor narxni topaman\n\n"
-        f"Tonnel: {status}\n"
+        "[Photo] - NFT rasmini yuboring, floor narxni topaman\n"
+        "[Link] - t.me/nft/... linkini yuboring\n\n"
+        f"Marketplaces: Tonnel({tonnel_status}) | Fragment | Getgems\n"
         f"Admin: {ADMIN_USERNAME}",
         reply_markup=main_menu(),
     )

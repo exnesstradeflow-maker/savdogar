@@ -7,48 +7,16 @@ from aiogram.types import Message
 
 from config import ADMIN_USERNAME
 from services.ocr import extract_text, find_nft_name, is_tesseract_installed
-from services.tonnel import TONNELMP_AVAILABLE, get_tonnel_floor
+from services.marketplaces import get_all_floor_prices, format_marketplace_response
 from services.coingecko import get_crypto_price
 
 logger = logging.getLogger(__name__)
 
 router = Router()
 
-async def _format_nft_response(gift_name: str) -> str | None:
-    result = await get_tonnel_floor(gift_name)
-    ton_usd = await get_crypto_price("the-open-network", "usd")
-    if not result:
-        return None
-    floor, count = result
-    lines = [f"[NFT] {gift_name.upper()}", "=" * 30]
-    lines.append(f"Floor: {floor:.2f} TON")
-    if ton_usd:
-        lines.append(f" (~${floor * ton_usd:.2f})")
-    lines.append(f"Sotuvda: {count} ta")
-    lines.append(f"\nAdmin: {ADMIN_USERNAME}")
-    return "\n".join(lines)
-
-
-async def _try_variations(name: str) -> tuple[str, str] | None:
-    candidates = [name]
-    parts = re.split(r'(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])', name)
-    if len(parts) > 1:
-        candidates.append(" ".join(parts))
-        candidates.append("".join(parts))
-
-    for candidate in candidates:
-        resp = await _format_nft_response(candidate)
-        if resp:
-            return candidate, resp
-    return None
-
 
 @router.message(F.photo)
 async def handle_photo(message: Message):
-    if not TONNELMP_AVAILABLE:
-        await message.answer("Tonnel kutubxonasi ishlamayapti.")
-        return
-
     if not is_tesseract_installed():
         await message.answer("OCR o'rnatilmagan. Iltimos, /nft <nomi> yoki NFT linkini yuboring.")
         return
@@ -82,9 +50,27 @@ async def handle_photo(message: Message):
         )
         return
 
-    found = await _try_variations(nft_name)
+    found = await _search_nft_variations(nft_name)
     if found:
-        nft_name, response = found
+        gift_name, response = found
+        response += f"\n\nAdmin: {ADMIN_USERNAME}"
         await message.answer(response)
     else:
         await message.answer(f"{nft_name} uchun narx topilmadi. /nft <nomi> buyrug'ini ishlating.")
+
+
+async def _search_nft_variations(name: str):
+    candidates = [name]
+    parts = re.split(r'(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])', name)
+    if len(parts) > 1:
+        candidates.append(" ".join(parts))
+        candidates.append("".join(parts))
+
+    for candidate in candidates:
+        prices = await get_all_floor_prices(candidate)
+        ton_usd = await get_crypto_price("the-open-network", "usd")
+        if prices:
+            response = format_marketplace_response(candidate, prices, ton_usd)
+            return candidate, response
+
+    return None
