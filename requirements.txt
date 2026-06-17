@@ -1,5 +1,3 @@
 aiogram==3.14.0
 aiohttp>=3.9.0,<3.11
 tonnelmp==1.2
-portalsmp==1.2
-tgmrkt-api==0.1.0
