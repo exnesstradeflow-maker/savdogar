@@ -12,6 +12,7 @@ from handlers.crypto import router as crypto_router
 from handlers.gold import router as gold_router
 from handlers.text import router as text_router
 from handlers.admin import router as admin_router
+from handlers.photo import router as photo_router
 from services.tonnel import TONNELMP_AVAILABLE
 
 logging.basicConfig(
@@ -29,6 +30,7 @@ dp.include_router(stars_router)
 dp.include_router(crypto_router)
 dp.include_router(gold_router)
 dp.include_router(admin_router)
+dp.include_router(photo_router)
 dp.include_router(text_router)
 
 

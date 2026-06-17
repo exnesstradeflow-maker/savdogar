@@ -17,7 +17,8 @@ async def cmd_start(message: Message):
         "/nft <nomi> - NFT floor narxi (Tonnel)\n"
         "/stars <miqdor> - Stars -> Som\n"
         "/crypto <coin> - Crypto narxi\n"
-        "/gold - Oltin narxi\n\n"
+        "/gold - Oltin narxi\n"
+        "[Photo] - NFT rasmini yuboring, floor narxni topaman\n\n"
         f"Tonnel: {status}\n"
         f"Admin: {ADMIN_USERNAME}",
         reply_markup=main_menu(),
