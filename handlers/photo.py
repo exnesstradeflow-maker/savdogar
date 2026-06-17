@@ -1,3 +1,4 @@
+import re
 import logging
 import aiohttp
 
@@ -13,6 +14,35 @@ logger = logging.getLogger(__name__)
 
 router = Router()
 
+async def _format_nft_response(gift_name: str) -> str | None:
+    result = await get_tonnel_floor(gift_name)
+    ton_usd = await get_crypto_price("the-open-network", "usd")
+    if not result:
+        return None
+    floor, count = result
+    lines = [f"[NFT] {gift_name.upper()}", "=" * 30]
+    lines.append(f"Floor: {floor:.2f} TON")
+    if ton_usd:
+        lines.append(f" (~${floor * ton_usd:.2f})")
+    lines.append(f"Sotuvda: {count} ta")
+    lines.append(f"\nAdmin: {ADMIN_USERNAME}")
+    return "\n".join(lines)
+
+
+async def _try_variations(name: str) -> tuple[str, str] | None:
+    candidates = [name]
+    parts = re.split(r'(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])', name)
+    if len(parts) > 1:
+        candidates.append(" ".join(parts))
+        candidates.append("".join(parts))
+
+    for candidate in candidates:
+        resp = await _format_nft_response(candidate)
+        if resp:
+            return candidate, resp
+    return None
+
+
 @router.message(F.photo)
 async def handle_photo(message: Message):
     if not TONNELMP_AVAILABLE:
@@ -20,10 +50,7 @@ async def handle_photo(message: Message):
         return
 
     if not is_tesseract_installed():
-        await message.answer(
-            "OCR tizimi o'rnatilmagan. Iltimos, NFT nomini matnda yozing:\n"
-            "/nft <gift nomi>"
-        )
+        await message.answer("OCR o'rnatilmagan. Iltimos, /nft <nomi> yoki NFT linkini yuboring.")
         return
 
     await message.answer("Rasm tahlil qilinmoqda...")
@@ -41,37 +68,23 @@ async def handle_photo(message: Message):
         await message.answer("Rasmni yuklab bo'lmadi.")
         return
 
-    text = extract_text(image_bytes)
-    logger.info(f"OCR result: {text}")
+    ocr_text = extract_text(image_bytes)
+    logger.info(f"OCR result: {ocr_text}")
 
-    if not text:
-        await message.answer("Rasmdan matn o'qib bo'lmadi. Iltimos, /nft <nomi> buyrug'ini ishlating.")
+    if not ocr_text:
+        await message.answer("Rasmdan matn o'qib bo'lmadi. /nft <nomi> buyrug'ini ishlating.")
         return
 
-    nft_name = find_nft_name(text)
+    nft_name = find_nft_name(ocr_text)
     if not nft_name:
         await message.answer(
-            f"Rasmdan NFT nomi topilmadi. Topilgan matn: {text[:100]}...\n"
-            "/nft <nomi> buyrug'ini ishlating."
+            f"Rasmdan NFT nomi topilmadi: {ocr_text[:120]}...\n/nft <nomi> buyrug'ini ishlating."
         )
         return
 
-    await message.answer(f"{nft_name} narxi qidirilmoqda...")
-
-    result = await get_tonnel_floor(nft_name)
-    ton_usd = await get_crypto_price("the-open-network", "usd")
-
-    if not result:
-        await message.answer(f"{nft_name} uchun narx topilmadi")
-        return
-
-    floor, count = result
-    text_response = f"[NFT] {nft_name.upper()}\n"
-    text_response += "=" * 30 + "\n"
-    text_response += f"Floor: {floor:.2f} TON"
-    if ton_usd:
-        text_response += f" (~${floor * ton_usd:.2f})"
-    text_response += f"\nSotuvda: {count} ta"
-    text_response += f"\n\nAdmin: {ADMIN_USERNAME}"
-
-    await message.answer(text_response)
+    found = await _try_variations(nft_name)
+    if found:
+        nft_name, response = found
+        await message.answer(response)
+    else:
+        await message.answer(f"{nft_name} uchun narx topilmadi. /nft <nomi> buyrug'ini ishlating.")

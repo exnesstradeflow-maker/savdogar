@@ -1,6 +1,5 @@
 import logging
 import re
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -20,20 +19,19 @@ try:
 except ImportError:
     Image = None
 
-NFT_KEYWORDS = [
-    "toy bear", "king otta", "otto", "bear", "rabbit", "penguin",
-    "skull", "dragon", "lion", "tiger", "wolf", "fox", "owl",
-    "cat", "dog", "monkey", "panda", "koala", "frog", "duck",
-    "chicken", "fish", "whale", "shark", "horse", "unicorn",
-    "robot", "alien", "zombie", "vampire", "ghost", "angel",
-    "devil", "ninja", "pirate", "wizard", "knight", "king",
-    "queen", "prince", "princess", "crown", "ring", "gem",
-    "diamond", "gold", "silver", "bronze", "rainbow", "star",
-    "moon", "sun", "cloud", "storm", "lightning", "snow",
-    "flower", "tree", "mushroom", "candy", "cake", "ice cream",
-    "pizza", "burger", "fries", "cola", "juice", "coffee",
-    "tea", "beer", "wine", "champagne", "cocktail",
-]
+STOP_WORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "be", "been",
+    "has", "have", "had", "do", "does", "did", "will", "would",
+    "could", "should", "may", "might", "shall", "can", "need",
+    "this", "that", "these", "those", "it", "its", "you", "your",
+    "we", "our", "they", "their", "he", "she", "him", "her",
+    "and", "or", "but", "not", "no", "nor", "so", "if", "then",
+    "else", "when", "where", "why", "how", "what", "which", "who",
+    "whom", "by", "with", "from", "to", "in", "on", "at", "for",
+    "of", "as", "up", "down", "out", "off", "over", "under",
+    "floor", "price", "narxi", "sotuvda", "ton", "usd", "nft",
+    "buy", "sell", "sale", "collection", "item", "gift",
+}
 
 def extract_text(image_bytes: bytes) -> str | None:
     if not TESSERACT_AVAILABLE or not pytesseract or not Image:
@@ -48,16 +46,40 @@ def extract_text(image_bytes: bytes) -> str | None:
         logger.error(f"OCR error: {e}")
     return None
 
+def parse_tg_nft_link(text: str) -> str | None:
+    m = re.search(r't\.me/nft/([A-Za-z0-9]+)', text)
+    if m:
+        raw = m.group(1)
+        name = re.sub(r'-\d+$', '', raw)
+        if name:
+            return name
+    return None
+
 def find_nft_name(text: str) -> str | None:
     if not text:
         return None
-    text_lower = text.lower()
-    for keyword in NFT_KEYWORDS:
-        if re.search(r"\b" + re.escape(keyword) + r"\b", text_lower):
-            return keyword.title()
-    words = re.findall(r"\b[a-zA-Z]{2,}\b", text)
+
+    link_name = parse_tg_nft_link(text)
+    if link_name:
+        return link_name
+
+    words = re.findall(r"[A-Za-z][a-zA-Z0-9]{1,}", text)
+
+    camelcase_words = []
+    for w in words:
+        if w[0].isupper() and any(c.islower() for c in w[1:]):
+            camelcase_words.append(w)
+
+    if camelcase_words:
+        return max(camelcase_words, key=len)
+
+    cleaned = [w for w in words if w.lower() not in STOP_WORDS and len(w) > 1]
+    if cleaned:
+        return max(cleaned, key=len)
+
     if words:
-        return words[0].title()
+        return words[0]
+
     return None
 
 def is_tesseract_installed() -> bool:
