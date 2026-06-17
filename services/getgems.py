@@ -5,20 +5,22 @@ from .cache import cached
 logger = logging.getLogger(__name__)
 
 GETGEMS_API = "https://api.getgems.io/graphql"
-FRAGMENT_API = "https://fragment.com/api/gifts"
 
 SEARCH_QUERY = """
 query searchCollections($query: String!) {
-  collections(search: $query, first: 5) {
-    edges {
-      node {
-        name
-        floorPrice
-        currency {
-          code
-        }
-      }
-    }
+  collectionSearch(query: $query, limit: 5) {
+    address
+    name
+    floorPrice
+  }
+}
+"""
+
+COLLECTION_QUERY = """
+query collectionByAddress($address: String!) {
+  collection(address: $address) {
+    name
+    floorPrice
   }
 }
 """
@@ -35,19 +37,37 @@ async def get_getgems_floor(gift_name: str) -> dict | None:
             async with session.post(GETGEMS_API, json=payload, headers=headers, timeout=10) as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    edges = data.get("data", {}).get("collections", {}).get("edges", [])
-                    for edge in edges:
-                        node = edge.get("node", {})
-                        name = node.get("name", "")
-                        if gift_name.lower() in name.lower():
-                            floor = node.get("floorPrice")
-                            if floor is not None:
-                                return {
-                                    "price": float(floor),
-                                    "currency": node.get("currency", {}).get("code", "TON"),
-                                    "market": "Getgems",
-                                    "name": name,
-                                }
+                    collections = data.get("data", {}).get("collectionSearch", [])
+                    if collections:
+                        for col in collections:
+                            name = col.get("name", "")
+                            if gift_name.lower() in name.lower():
+                                floor = col.get("floorPrice")
+                                if floor is not None:
+                                    logger.info(f"Getgems found: {name} = {floor} TON")
+                                    return {"price": float(floor), "currency": "TON", "market": "Getgems", "name": name}
+                        first = collections[0]
+                        floor = first.get("floorPrice")
+                        if floor is not None:
+                            logger.info(f"Getgems best: {first.get('name', '?')} = {floor} TON")
+                            return {"price": float(floor), "currency": "TON", "market": "Getgems", "name": first.get("name", gift_name)}
     except Exception as e:
-        logger.error(f"Getgems error: {e}")
+        logger.warning(f"Getgems GraphQL error: {e}")
+
+    try:
+        rest_url = f"https://api.getgems.io/v1/collections/search?q={gift_name}&limit=5"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(rest_url, timeout=10) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    items = data if isinstance(data, list) else data.get("collections", data.get("data", []))
+                    if items:
+                        item = items[0]
+                        floor = item.get("floor_price") or item.get("floorPrice")
+                        if floor is not None:
+                            return {"price": float(floor), "currency": "TON", "market": "Getgems", "name": item.get("name", gift_name)}
+    except Exception as e:
+        logger.warning(f"Getgems REST error: {e}")
+
+    logger.info(f"Getgems: no data for '{gift_name}'")
     return None

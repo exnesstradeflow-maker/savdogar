@@ -50,27 +50,12 @@ async def handle_photo(message: Message):
         )
         return
 
-    found = await _search_nft_variations(nft_name)
-    if found:
-        gift_name, response = found
+    prices = await get_all_floor_prices(nft_name)
+    ton_usd = await get_crypto_price("the-open-network", "usd")
+
+    if prices:
+        response = format_marketplace_response(nft_name, prices, ton_usd)
         response += f"\n\nAdmin: {ADMIN_USERNAME}"
         await message.answer(response)
     else:
         await message.answer(f"{nft_name} uchun narx topilmadi. /nft <nomi> buyrug'ini ishlating.")
-
-
-async def _search_nft_variations(name: str):
-    candidates = [name]
-    parts = re.split(r'(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])', name)
-    if len(parts) > 1:
-        candidates.append(" ".join(parts))
-        candidates.append("".join(parts))
-
-    for candidate in candidates:
-        prices = await get_all_floor_prices(candidate)
-        ton_usd = await get_crypto_price("the-open-network", "usd")
-        if prices:
-            response = format_marketplace_response(candidate, prices, ton_usd)
-            return candidate, response
-
-    return None
