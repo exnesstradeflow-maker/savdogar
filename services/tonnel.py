@@ -1,35 +1,68 @@
 import logging
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
+import aiohttp
 
 logger = logging.getLogger(__name__)
 
-TONNELMP_AVAILABLE = False
-_getGifts = None
-_executor = ThreadPoolExecutor(max_workers=2)
-
-try:
-    from tonnelmp import getGifts as _getGifts
-    TONNELMP_AVAILABLE = True
-    logger.info("tonnelmp imported successfully")
-except Exception as e:
-    logger.error(f"tonnelmp import failed: {e}")
-
-def _sync_get_floor(gift_name: str):
-    if not TONNELMP_AVAILABLE or not _getGifts:
-        return None
-    try:
-        logger.info(f"Tonnel search: {gift_name}")
-        result = _getGifts(gift_name=gift_name, limit=5, sort="price_asc")
-        logger.info(f"Tonnel result count: {len(result) if result else 0}")
-        if result and len(result) > 0:
-            prices = [float(g.get("price", 0)) for g in result if g.get("price")]
-            if prices:
-                return min(prices), len(result)
-    except Exception as e:
-        logger.error(f"Tonnel error: {e}")
-    return None
+TONNEL_API = "https://gifts2.tonnel.network/api/pageGifts"
+TONNELMP_AVAILABLE = True
 
 async def get_tonnel_floor(gift_name: str):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_executor, _sync_get_floor, gift_name)
+    name_variants = [gift_name]
+    if " " not in gift_name:
+        import re
+        parts = re.split(r'(?<=[a-z])(?=[A-Z])', gift_name)
+        if len(parts) > 1:
+            name_variants.append(" ".join(parts))
+            name_variants.append(" ".join(parts).lower())
+
+    for variant in name_variants:
+        floor = await _query_tonnel_api(variant)
+        if floor:
+            return floor
+
+    return None
+
+
+async def _query_tonnel_api(gift_name: str):
+    try:
+        payload = {
+            "page": 1,
+            "limit": 10,
+            "sort": {"price": 1},
+            "filter": {
+                "name": {"$regex": gift_name, "$options": "i"},
+                "price": {"$exists": True},
+                "refunded": {"$ne": True},
+                "buyer": {"$exists": False},
+            },
+            "ref": 0,
+            "price_range": None,
+            "user_auth": "",
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0",
+        }
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.post(TONNEL_API, json=payload, timeout=15) as resp:
+                if resp.status != 200:
+                    logger.warning(f"Tonnel API status {resp.status}")
+                    return None
+                data = await resp.json()
+                gifts = data if isinstance(data, list) else data.get("data", data.get("gifts", data.get("items", [])))
+                if not gifts:
+                    return None
+                prices = []
+                for g in gifts:
+                    price = g.get("price")
+                    if price:
+                        prices.append(float(price))
+                if prices:
+                    floor = min(prices)
+                    logger.info(f"Tonnel API: {gift_name} floor={floor}, total={len(prices)}")
+                    return floor, len(prices)
+    except Exception as e:
+        logger.warning(f"Tonnel API error: {e}")
+    return None

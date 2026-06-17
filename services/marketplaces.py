@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from .tonnel import get_tonnel_floor, TONNELMP_AVAILABLE
+from .tonnel import get_tonnel_floor
 from .getgems import get_getgems_floor
 from .fragment import get_fragment_floor
 from .portals import get_portals_floor
@@ -45,8 +45,7 @@ async def get_all_floor_prices(gift_name: str) -> list[dict]:
     for variant in variations:
         tasks = []
 
-        if TONNELMP_AVAILABLE:
-            tasks.append(_fetch_tonnel(variant))
+        tasks.append(_fetch_tonnel(variant))
 
         tasks.append(_fetch_with_label("Getgems", get_getgems_floor(variant)))
         tasks.append(_fetch_with_label("Fragment", get_fragment_floor(variant)))

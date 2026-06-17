@@ -3,24 +3,22 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 
 from config import ADMIN_USERNAME
-from services.tonnel import TONNELMP_AVAILABLE
 from keyboards.inline import main_menu
 
 router = Router()
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
-    tonnel_status = "ON" if TONNELMP_AVAILABLE else "OFF"
     await message.answer(
         "Savdogar Bot\n\n"
         "Buyruqlar:\n"
-        "/nft <nomi> - NFT floor narxi (Tonnel, Fragment, Getgems)\n"
+        "/nft <nomi> - NFT floor narxi (barcha marketlar)\n"
         "/stars <miqdor> - Stars -> Som\n"
         "/crypto <coin> - Crypto narxi\n"
         "/gold - Oltin narxi\n"
         "[Photo] - NFT rasmini yuboring, floor narxni topaman\n"
         "[Link] - t.me/nft/... linkini yuboring\n\n"
-        f"Marketplaces: Tonnel({tonnel_status}) | Fragment | Getgems | Portals | MRKT\n"
+        f"Marketplaces: Tonnel | Fragment | Getgems | Portals | MRKT\n"
         f"Admin: {ADMIN_USERNAME}",
         reply_markup=main_menu(),
     )
