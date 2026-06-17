@@ -4,6 +4,8 @@ import logging
 from .tonnel import get_tonnel_floor, TONNELMP_AVAILABLE
 from .getgems import get_getgems_floor
 from .fragment import get_fragment_floor
+from .portals import get_portals_floor
+from .mrkt import get_mrkt_floor
 from .coingecko import get_crypto_price
 
 logger = logging.getLogger(__name__)
@@ -39,6 +41,8 @@ async def get_all_floor_prices(gift_name: str) -> list[dict]:
 
     tasks.append(_fetch_with_label("Getgems", get_getgems_floor(gift_name)))
     tasks.append(_fetch_with_label("Fragment", get_fragment_floor(gift_name)))
+    tasks.append(_fetch_with_label("Portals", get_portals_floor(gift_name)))
+    tasks.append(_fetch_with_label("MRKT", get_mrkt_floor(gift_name)))
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 

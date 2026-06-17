@@ -6,3 +6,5 @@ from .ocr import extract_text, find_nft_name, is_tesseract_installed
 from .marketplaces import get_all_floor_prices, format_marketplace_response
 from .getgems import get_getgems_floor
 from .fragment import get_fragment_floor
+from .portals import get_portals_floor
+from .mrkt import get_mrkt_floor

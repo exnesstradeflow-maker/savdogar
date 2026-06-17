@@ -20,7 +20,7 @@ async def cmd_start(message: Message):
         "/gold - Oltin narxi\n"
         "[Photo] - NFT rasmini yuboring, floor narxni topaman\n"
         "[Link] - t.me/nft/... linkini yuboring\n\n"
-        f"Marketplaces: Tonnel({tonnel_status}) | Fragment | Getgems\n"
+        f"Marketplaces: Tonnel({tonnel_status}) | Fragment | Getgems | Portals | MRKT\n"
         f"Admin: {ADMIN_USERNAME}",
         reply_markup=main_menu(),
     )
