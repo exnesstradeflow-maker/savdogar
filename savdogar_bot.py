@@ -13,20 +13,23 @@ import re
 try:
     from tonnelmp import getGifts, filterStatsPretty
     TONNELMP_AVAILABLE = True
-except:
+except Exception as e:
     TONNELMP_AVAILABLE = False
+    print(f"tonnelmp import error: {e}")
 
 try:
     from mrktmp import search_gifts, get_collection_floor
     MRKTMP_AVAILABLE = True
-except:
+except Exception as e:
     MRKTMP_AVAILABLE = False
+    print(f"mrktmp import error: {e}")
 
 try:
     from portalsmp import search, giftsFloors
     PORTALSMP_AVAILABLE = True
-except:
+except Exception as e:
     PORTALSMP_AVAILABLE = False
+    print(f"portalsmp import error: {e}")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,6 +46,10 @@ COINGECKO_API = "https://api.coingecko.com/api/v3/simple/price"
 TONNEL_AUTH = os.environ.get("TONNEL_AUTH", "")
 PORTALS_AUTH = os.environ.get("PORTALS_AUTH", "")
 MRKT_AUTH = os.environ.get("MRKT_AUTH", "")
+
+print(f"TONNEL_AUTH set: {bool(TONNEL_AUTH)}")
+print(f"PORTALS_AUTH set: {bool(PORTALS_AUTH)}")
+print(f"MRKT_AUTH set: {bool(MRKT_AUTH)}")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -81,9 +88,12 @@ async def get_ton_price():
 
 async def get_nft_floor_tonnel(gift_name: str):
     if not TONNELMP_AVAILABLE:
+        logger.error("Tonnel not available - import failed")
         return None
     try:
+        logger.info(f"Tonnel search: {gift_name}")
         result = getGifts(gift_name=gift_name, limit=1, sort="price_asc", authData=TONNEL_AUTH)
+        logger.info(f"Tonnel result: {result}")
         if result and len(result) > 0:
             return float(result[0].get("price", 0))
     except Exception as e:
