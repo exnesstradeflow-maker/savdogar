@@ -13,8 +13,6 @@ from handlers.gold import router as gold_router
 from handlers.text import router as text_router
 from handlers.admin import router as admin_router
 from handlers.photo import router as photo_router
-from services.tonnel import TONNELMP_AVAILABLE
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -35,8 +33,7 @@ dp.include_router(text_router)
 
 
 async def main():
-    logger.info("Savdogar bot ishga tushdi...")
-    logger.info(f"Tonnel available: {TONNELMP_AVAILABLE}")
+    logger.info("Savdogar bot ishga tushdi... (Tonnel API direct)")
     await dp.start_polling(bot)
 
 

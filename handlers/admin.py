@@ -4,6 +4,7 @@ from aiogram.types import Message
 
 from config import ADMIN_ID, ADMIN_USERNAME
 from services.cache import clear_cache
+from services.tonnel import get_tonnel_floor
 
 router = Router()
 
@@ -16,9 +17,23 @@ async def cmd_admin(message: Message):
         return
     await message.answer(
         "Admin panel:\n"
+        "/test_nft <nomi> - API test\n"
         "/stats - Bot statistikasi\n"
         "/cache_clear - Keshni tozalash"
     )
+
+@router.message(Command("test_nft"))
+async def cmd_test_nft(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    parts = message.text.split(maxsplit=1)
+    name = parts[1].strip() if len(parts) > 1 else "SnowMittens"
+    msg = await message.answer(f"Test: {name}...")
+    result = await get_tonnel_floor(name)
+    if result:
+        await msg.edit_text(f"Tonnel OK: {name}\nFloor: {result[0]} TON\nSotuvda: {result[1]} ta")
+    else:
+        await msg.edit_text(f"Tonnel: {name} topilmadi")
 
 @router.message(Command("cache_clear"))
 async def cmd_cache_clear(message: Message):
